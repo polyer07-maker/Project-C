@@ -166,7 +166,8 @@ export default async function AnalysisPage() {
                 <strong>
                   {formatMoney(payoff.minimum.totalInterest - payoff.avalanche.totalInterest, currency)}
                 </strong>{" "}
-                din dobândă față de plata minimă. Ordinea: {payoff.avalanche.order.map((o) => o.name).join(" → ")}.
+                din dobândă față de plata minimă. Extra-ul merge la {payoff.avalanche.extraTarget}. Se sting în
+                ordine: {payoff.avalanche.order.map((o) => o.name).join(" → ")}.
               </p>
             )}
           </div>

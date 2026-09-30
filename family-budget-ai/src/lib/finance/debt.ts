@@ -6,6 +6,20 @@ export function round2(value: number): number {
   return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
+/** Which open debt currently receives extra payments under the given strategy. */
+export function extraPaymentTarget(
+  debts: Debt[],
+  strategy: "avalanche" | "snowball" | "minimum",
+): string | null {
+  const open = debts.filter((d) => d.balance > 0);
+  if (open.length === 0 || strategy === "minimum") return null;
+  const sorted =
+    strategy === "snowball"
+      ? [...open].sort((a, b) => a.balance - b.balance)
+      : [...open].sort((a, b) => b.annualRate - a.annualRate || a.balance - b.balance);
+  return sorted[0]?.name ?? null;
+}
+
 export function summarizeDebts(debts: Debt[], monthlyIncome: number): DebtSummary {
   const totalBalance = debts.reduce((sum, d) => sum + d.balance, 0);
   const totalMinPayment = debts.reduce((sum, d) => sum + d.minPayment, 0);
@@ -57,6 +71,7 @@ export function simulatePayoff(
       totalPaid: 0,
       monthlyPayment: 0,
       order: [],
+      extraTarget: null,
       timeline: [],
       feasible: true,
       note: null,
@@ -160,6 +175,7 @@ export function simulatePayoff(
         paidOffInMonth: s.paidOffInMonth,
         interestPaid: round2(s.interestPaid),
       })),
+    extraTarget: extraPaymentTarget(active, strategy),
     timeline,
     feasible,
     note: cleared

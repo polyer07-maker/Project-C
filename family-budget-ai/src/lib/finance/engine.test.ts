@@ -185,11 +185,12 @@ describe("debt payoff", () => {
 
   it("attacks the highest rate first with the avalanche strategy", () => {
     const avalanche = simulatePayoff(debts, 1000, "avalanche");
-    expect(avalanche.order[0].name).toBe("Card");
+    expect(avalanche.extraTarget).toBe("Card");
   });
 
   it("attacks the smallest balance first with the snowball strategy", () => {
     const snowball = simulatePayoff(debts, 1000, "snowball");
+    expect(snowball.extraTarget).toBe("Rate telefon");
     expect(snowball.order[0].name).toBe("Rate telefon");
     expect(snowball.totalInterest).toBeGreaterThanOrEqual(simulatePayoff(debts, 1000, "avalanche").totalInterest);
   });
@@ -231,5 +232,24 @@ describe("buildActionPlan", () => {
     const plan = buildActionPlan(buildSnapshot(household()));
     expect(plan).toHaveLength(1);
     expect(plan[0].title).toContain("Completează");
+  });
+
+  it("directs extra debt payments toward the highest rate, not the first debt to be paid off", () => {
+    const snapshot = buildSnapshot(
+      household({
+        profile: { name: "Test", currency: "RON", adults: 2, children: 0, savingsBalance: 5000 },
+        incomes: [income({ amount: 10000 })],
+        expenses: [expense({ amount: 4000, category: "locuinta" })],
+        debts: [
+          { id: "a", name: "Card", balance: 9800, annualRate: 0.32, minPayment: 420, kind: "credit_card" },
+          { id: "b", name: "Nevoi personale", balance: 21500, annualRate: 0.14, minPayment: 730, kind: "personal_loan" },
+          { id: "c", name: "Rate telefon", balance: 2400, annualRate: 0, minPayment: 200, kind: "other" },
+        ],
+      }),
+    );
+    expect(snapshot.payoff?.avalanche.extraTarget).toBe("Card");
+    const extraStep = buildActionPlan(snapshot).find((step) => step.title.includes("în plus"));
+    expect(extraStep?.title).toContain("Card");
+    expect(extraStep?.title).not.toContain("Rate telefon");
   });
 });

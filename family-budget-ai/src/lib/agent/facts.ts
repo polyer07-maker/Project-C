@@ -1,4 +1,5 @@
 import { formatMonths, round2 } from "../finance/debt";
+import { extractNumbers } from "./grounding";
 import { buildActionPlan, type PlanStep } from "../finance/plan";
 import type { HouseholdData, Snapshot } from "../finance/types";
 
@@ -54,8 +55,8 @@ export interface AgentFacts {
   reduceriTotal: { lunar: number; anual: number };
   scenariiRambursare: {
     doarRateMinime: { luni: string; dobandaTotala: number };
-    avalansa: { luni: string; dobandaTotala: number; ordine: string[] };
-    bulgareDeZapada: { luni: string; dobandaTotala: number; ordine: string[] };
+    avalansa: { luni: string; dobandaTotala: number; tintaExtra: string | null; ordineStingere: string[] };
+    bulgareDeZapada: { luni: string; dobandaTotala: number; tintaExtra: string | null; ordineStingere: string[] };
     dobandaEconomisitaCuAvalansa: number;
   } | null;
   obiective: { nume: string; tinta: number; strans: number; ramasDeStrans: number }[];
@@ -134,12 +135,14 @@ export function buildFacts(snapshot: Snapshot, data: HouseholdData): AgentFacts 
           avalansa: {
             luni: formatMonths(snapshot.payoff.avalanche.months),
             dobandaTotala: snapshot.payoff.avalanche.totalInterest,
-            ordine: snapshot.payoff.avalanche.order.map((o) => o.name),
+            tintaExtra: snapshot.payoff.avalanche.extraTarget,
+            ordineStingere: snapshot.payoff.avalanche.order.map((o) => o.name),
           },
           bulgareDeZapada: {
             luni: formatMonths(snapshot.payoff.snowball.months),
             dobandaTotala: snapshot.payoff.snowball.totalInterest,
-            ordine: snapshot.payoff.snowball.order.map((o) => o.name),
+            tintaExtra: snapshot.payoff.snowball.extraTarget,
+            ordineStingere: snapshot.payoff.snowball.order.map((o) => o.name),
           },
           dobandaEconomisitaCuAvalansa: round2(
             snapshot.payoff.minimum.totalInterest - snapshot.payoff.avalanche.totalInterest,
@@ -168,10 +171,7 @@ export function collectAllowedNumbers(value: unknown, acc = new Set<number>()): 
     return acc;
   }
   if (typeof value === "string") {
-    for (const match of value.matchAll(/-?\d+(?:[.,]\d+)?/g)) {
-      const parsed = Number(match[0].replace(",", "."));
-      if (Number.isFinite(parsed)) add(acc, parsed);
-    }
+    for (const parsed of extractNumbers(value)) add(acc, parsed);
     return acc;
   }
   if (Array.isArray(value)) {

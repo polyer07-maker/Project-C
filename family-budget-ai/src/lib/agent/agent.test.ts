@@ -138,6 +138,12 @@ describe("answerFromRules", () => {
 });
 
 describe("grounding", () => {
+  it("reads back an amount formatted with Romanian separators", () => {
+    const answer = answerFromRules("Care sunt veniturile?", snapshot);
+    expect(answer).toContain("11.100 lei");
+    expect(extractNumbers(answer)).toContain(snapshot.totalIncome);
+  });
+
   it("parses Romanian and plain number formats", () => {
     expect(extractNumbers("Ai 1.234,56 lei și 780 lei")).toEqual([1234.56, 780]);
     expect(extractNumbers("32% pe an")).toEqual([32]);

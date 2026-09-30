@@ -1,4 +1,5 @@
 import { formatMonths, monthsToReach, round2 } from "../finance/debt";
+import { formatAmount, formatDecimal, formatPercent } from "../format";
 import { buildActionPlan } from "../finance/plan";
 import type { Snapshot } from "../finance/types";
 
@@ -48,9 +49,8 @@ export function extractAmount(question: string): number | null {
   return null;
 }
 
-function money(value: number, currency: string): string {
-  return `${round2(value).toLocaleString("ro-RO", { maximumFractionDigits: 2 })} ${currency}`;
-}
+const money = formatAmount;
+const pct = formatPercent;
 
 /**
  * Deterministic answers built straight from the computed snapshot. These are
@@ -90,10 +90,10 @@ export function answerFromRules(question: string, snapshot: Snapshot): string {
       return [
         `Situația pe scurt: venit ${money(snapshot.totalIncome, c)} pe lună, cheltuieli ${money(snapshot.totalExpenses, c)}, rate minime ${money(snapshot.minimumDebtPayments, c)}.`,
         snapshot.freeCashFlow >= 0
-          ? `Îți rămân ${money(snapshot.freeCashFlow, c)} pe lună, adică ${(snapshot.savingsRate * 100).toFixed(1)}% din venit.`
+          ? `Îți rămân ${money(snapshot.freeCashFlow, c)} pe lună, adică ${pct(snapshot.savingsRate)} din venit.`
           : `Ești pe minus cu ${money(Math.abs(snapshot.freeCashFlow), c)} pe lună.`,
         snapshot.debt.totalBalance > 0
-          ? `Datorii totale ${money(snapshot.debt.totalBalance, c)}, dobândă medie ${(snapshot.debt.weightedAnnualRate * 100).toFixed(1)}% pe an.`
+          ? `Datorii totale ${money(snapshot.debt.totalBalance, c)}, dobândă medie ${pct(snapshot.debt.weightedAnnualRate)} pe an.`
           : "Nu ai datorii înregistrate.",
         "Întreabă-mă concret: cât pot economisi, unde pot tăia, în cât timp scap de datorii sau dacă îmi permit o anumită cheltuială.",
       ].join(" ");
@@ -116,7 +116,7 @@ function savingsAnswer(snapshot: Snapshot): string {
 
   const total = round2(s.monthlyToEmergencyFund + s.monthlyToGoals);
   return [
-    `Poți economisi realist ${money(total, c)} pe lună, adică ${(s.realisticSavingsRate * 100).toFixed(1)}% din venitul net.`,
+    `Poți economisi realist ${money(total, c)} pe lună, adică ${pct(s.realisticSavingsRate)} din venitul net.`,
     `Asta iese din cei ${money(s.freeCashFlow, c)} care îți rămân efectiv: ${money(s.monthlyToEmergencyFund, c)} în fondul de urgență, ${money(s.monthlyExtraToDebt, c)} în plus la datorii, ${money(s.monthlyToGoals, c)} către obiective și ${money(s.monthlyBuffer, c)} tampon nealocat.`,
     `Tamponul rămâne intenționat nealocat: un plan care consumă fiecare leu pică la prima cheltuială neprevăzută.`,
     s.rationale[1] ?? "",
@@ -133,7 +133,7 @@ function debtAnswer(snapshot: Snapshot): string {
 
   const payoff = snapshot.payoff!;
   const parts = [
-    `Ai ${money(snapshot.debt.totalBalance, c)} datorii, cu rate minime de ${money(snapshot.debt.totalMinPayment, c)} pe lună și o dobândă medie ponderată de ${(snapshot.debt.weightedAnnualRate * 100).toFixed(1)}% pe an. Numai dobânda te costă ${money(snapshot.debt.monthlyInterestCost, c)} lunar.`,
+    `Ai ${money(snapshot.debt.totalBalance, c)} datorii, cu rate minime de ${money(snapshot.debt.totalMinPayment, c)} pe lună și o dobândă medie ponderată de ${pct(snapshot.debt.weightedAnnualRate)} pe an. Numai dobânda te costă ${money(snapshot.debt.monthlyInterestCost, c)} lunar.`,
   ];
 
   if (snapshot.debt.unsustainable.length > 0) {
@@ -144,8 +144,8 @@ function debtAnswer(snapshot: Snapshot): string {
 
   if (snapshot.savings.monthlyExtraToDebt > 0) {
     parts.push(
-      `Cu ${money(snapshot.savings.monthlyExtraToDebt, c)} în plus pe lună (atât permite bugetul tău, nu mai mult), metoda avalanșă stinge tot în ${formatMonths(payoff.avalanche.months)} și te costă ${money(payoff.avalanche.totalInterest, c)} dobândă, față de ${formatMonths(payoff.minimum.months)} și ${money(payoff.minimum.totalInterest, c)} cu plăți minime. Economisești ${money(payoff.minimum.totalInterest - payoff.avalanche.totalInterest, c)} din dobândă.`,
-      `Ordinea de atac: ${payoff.avalanche.order.map((o) => o.name).join(" → ")}.`,
+      `Cu ${money(snapshot.savings.monthlyExtraToDebt, c)} în plus pe lună (atât permite bugetul tău, nu mai mult), metoda avalanșă trimite extra la ${payoff.avalanche.extraTarget ?? "datoria cu dobânda cea mai mare"} și stinge tot în ${formatMonths(payoff.avalanche.months)} și te costă ${money(payoff.avalanche.totalInterest, c)} dobândă, față de ${formatMonths(payoff.minimum.months)} și ${money(payoff.minimum.totalInterest, c)} cu plăți minime. Economisești ${money(payoff.minimum.totalInterest - payoff.avalanche.totalInterest, c)} din dobândă.`,
+      `Ordinea în care se sting: ${payoff.avalanche.order.map((o) => o.name).join(" → ")}.`,
     );
   } else {
     parts.push(
@@ -167,7 +167,7 @@ function spendingAnswer(snapshot: Snapshot): string {
   const top = snapshot.categories.slice(0, 5);
   const lines = top.map(
     (cat) =>
-      `${cat.label}: ${money(cat.monthly, c)} pe lună (${(cat.shareOfIncome * 100).toFixed(1)}% din venit${cat.overBenchmark > 0 ? `, cu ${money(cat.overBenchmark, c)} peste reperul uzual` : ""})`,
+      `${cat.label}: ${money(cat.monthly, c)} pe lună (${pct(cat.shareOfIncome)} din venit${cat.overBenchmark > 0 ? `, cu ${money(cat.overBenchmark, c)} peste reperul uzual` : ""})`,
   );
   return [
     `Cheltuielile lunare totalizează ${money(snapshot.totalExpenses, c)}: ${money(snapshot.essentialExpenses, c)} esențiale și ${money(snapshot.nonEssentialExpenses, c)} opționale.`,
@@ -205,7 +205,7 @@ function emergencyAnswer(snapshot: Snapshot): string {
   const monthsToFull = monthsToReach(s.emergencyFundTarget, s.monthlyToEmergencyFund, s.emergencyFundCurrent);
 
   return [
-    `Fondul de urgență recomandat este ${money(s.emergencyFundTarget, c)} (3 luni de cheltuieli esențiale de ${money(snapshot.essentialExpenses, c)}). Acum ai ${money(s.emergencyFundCurrent, c)}, adică ${s.emergencyFundMonthsCovered.toFixed(1)} luni acoperite.`,
+    `Fondul de urgență recomandat este ${money(s.emergencyFundTarget, c)} (3 luni de cheltuieli esențiale de ${money(snapshot.essentialExpenses, c)}). Acum ai ${money(s.emergencyFundCurrent, c)}, adică ${formatDecimal(s.emergencyFundMonthsCovered)} luni acoperite.`,
     s.monthlyToEmergencyFund > 0
       ? `Cu ${money(s.monthlyToEmergencyFund, c)} pe lună ajungi la prima treaptă (o lună, ${money(oneMonth, c)}) în ${formatMonths(monthsToOne)} și la ținta completă în ${formatMonths(monthsToFull)}.`
       : "Momentan bugetul nu permite nicio contribuție lunară, deci prima mișcare este eliberarea de bani din cheltuieli sau venit suplimentar.",
@@ -230,7 +230,7 @@ function affordabilityAnswer(question: string, snapshot: Snapshot): string {
   return [
     `Pentru ${money(amount, c)}: poți aloca ${money(monthlyForGoals, c)} pe lună fără să afectezi ratele și fondul de urgență, deci îți ia ${formatMonths(months)} să strângi suma.`,
     snapshot.debt.totalBalance > 0
-      ? `Alternativa onestă: aceiași bani puși pe datorii îți scurtează rambursarea, pentru că dobânda medie este ${(snapshot.debt.weightedAnnualRate * 100).toFixed(1)}% pe an. Decizia e a ta, dar acestea sunt costurile reale.`
+      ? `Alternativa onestă: aceiași bani puși pe datorii îți scurtează rambursarea, pentru că dobânda medie este ${pct(snapshot.debt.weightedAnnualRate)} pe an. Decizia e a ta, dar acestea sunt costurile reale.`
       : "Nu ai datorii care să concureze cu acest obiectiv, deci e o alocare curată.",
   ].join(" ");
 }

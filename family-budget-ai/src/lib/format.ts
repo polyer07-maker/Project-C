@@ -13,8 +13,18 @@ export function formatMoney(value: number, currency = "RON", decimals = 0): stri
   return `${formatted} ${CURRENCY_LABEL[currency] ?? currency}`;
 }
 
+/** Money for generated sentences: no decimals when the amount is round. */
+export function formatAmount(value: number, currency = "RON"): string {
+  const rounded = Math.round((value + Number.EPSILON) * 100) / 100;
+  return formatMoney(rounded, currency, Number.isInteger(rounded) ? 0 : 2);
+}
+
 export function formatPercent(ratio: number, decimals = 1): string {
   return `${(ratio * 100).toFixed(decimals).replace(".", ",")}%`;
+}
+
+export function formatDecimal(value: number, decimals = 1): string {
+  return value.toFixed(decimals).replace(".", ",");
 }
 
 export function formatDate(value: string | null): string {

@@ -113,6 +113,8 @@ export interface DebtPayoffResult {
   totalPaid: number;
   monthlyPayment: number;
   order: { name: string; paidOffInMonth: number | null; interestPaid: number }[];
+  /** Debt that currently receives the extra payment, or null for minimum-only. */
+  extraTarget: string | null;
   timeline: PayoffStep[];
   feasible: boolean;
   note: string | null;

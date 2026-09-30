@@ -1,4 +1,5 @@
 import { categoryMeta } from "./categories";
+import { formatAmount, formatDecimal, formatPercent } from "../format";
 import { monthsToReach, round2, simulatePayoff, summarizeDebts } from "./debt";
 import type {
   Alert,
@@ -101,8 +102,8 @@ function buildCuts(categories: CategoryBreakdownItem[], income: number): CutSugg
       suggestedMonthly: round2(target),
       monthlySaving: saving,
       reason: category.essential
-        ? `Cheltuială necesară, dar la ${(category.shareOfIncome * 100).toFixed(0)}% din venit este peste reperul uzual de ${(meta.benchmarkMaxShare * 100).toFixed(0)}%. O reducere de maximum ${(meta.maxRealisticCut * 100).toFixed(0)}% este fezabilă fără să afecteze strictul necesar.`
-        : `Cheltuială opțională aflată la ${(category.shareOfIncome * 100).toFixed(0)}% din venit, peste reperul de ${(meta.benchmarkMaxShare * 100).toFixed(0)}%. Se poate reduce treptat, nu eliminat complet.`,
+        ? `Cheltuială necesară, dar la ${formatPercent(category.shareOfIncome, 0)} din venit este peste reperul uzual de ${formatPercent(meta.benchmarkMaxShare, 0)}. O reducere de maximum ${formatPercent(meta.maxRealisticCut, 0)} este fezabilă fără să afecteze strictul necesar.`
+        : `Cheltuială opțională aflată la ${formatPercent(category.shareOfIncome, 0)} din venit, peste reperul de ${formatPercent(meta.benchmarkMaxShare, 0)}. Se poate reduce treptat, nu eliminat complet.`,
     });
   }
 
@@ -241,14 +242,14 @@ function buildAlerts(snapshot: Omit<Snapshot, "alerts">): Alert[] {
   if (freeCashFlow < 0) {
     alerts.push({
       level: "critical",
-      title: `Buget pe minus: ${round2(freeCashFlow)} ${snapshot.currency}/lună`,
-      detail: `Cheltuielile plus ratele minime depășesc veniturile cu ${round2(Math.abs(freeCashFlow))} ${snapshot.currency}. Diferența se acoperă din economii sau din credite noi, ceea ce adâncește problema. Reducerile propuse acoperă ${round2(cuts.reduce((s, c) => s + c.monthlySaving, 0))} ${snapshot.currency}.`,
+      title: `Buget pe minus: ${formatAmount(freeCashFlow, snapshot.currency)}/lună`,
+      detail: `Cheltuielile plus ratele minime depășesc veniturile cu ${formatAmount(Math.abs(freeCashFlow), snapshot.currency)}. Diferența se acoperă din economii sau din credite noi, ceea ce adâncește problema. Reducerile propuse acoperă ${formatAmount(cuts.reduce((s, c) => s + c.monthlySaving, 0), snapshot.currency)}.`,
     });
   } else if (freeCashFlow < totalIncome * 0.05) {
     alerts.push({
       level: "warning",
       title: "Marjă foarte mică la final de lună",
-      detail: `Îți rămân doar ${round2(freeCashFlow)} ${snapshot.currency} (${((freeCashFlow / totalIncome) * 100).toFixed(1)}% din venit). O cheltuială neprevăzută te împinge pe minus.`,
+      detail: `Îți rămân doar ${formatAmount(freeCashFlow, snapshot.currency)} (${formatPercent(freeCashFlow / totalIncome)} din venit). O cheltuială neprevăzută te împinge pe minus.`,
     });
   }
 
@@ -264,20 +265,20 @@ function buildAlerts(snapshot: Omit<Snapshot, "alerts">): Alert[] {
     if (debt.debtToIncomeRatio > 0.4) {
       alerts.push({
         level: "critical",
-        title: `Gradul de îndatorare este ${(debt.debtToIncomeRatio * 100).toFixed(0)}%`,
-        detail: `Ratele minime înseamnă ${round2(debt.totalMinPayment)} ${snapshot.currency} din venitul de ${round2(totalIncome)} ${snapshot.currency}. Peste 40% este zona în care băncile nu mai acordă credite și în care orice șoc de venit devine critic.`,
+        title: `Gradul de îndatorare este ${formatPercent(debt.debtToIncomeRatio, 0)}`,
+        detail: `Ratele minime înseamnă ${formatAmount(debt.totalMinPayment, snapshot.currency)} din venitul de ${formatAmount(totalIncome, snapshot.currency)}. Peste 40% este zona în care băncile nu mai acordă credite și în care orice șoc de venit devine critic.`,
       });
     } else if (debt.debtToIncomeRatio > 0.3) {
       alerts.push({
         level: "warning",
-        title: `Grad de îndatorare ridicat: ${(debt.debtToIncomeRatio * 100).toFixed(0)}%`,
-        detail: `Ratele minime consumă ${round2(debt.totalMinPayment)} ${snapshot.currency} pe lună. Ținta sănătoasă este sub 30% din venitul net.`,
+        title: `Grad de îndatorare ridicat: ${formatPercent(debt.debtToIncomeRatio, 0)}`,
+        detail: `Ratele minime consumă ${formatAmount(debt.totalMinPayment, snapshot.currency)} pe lună. Ținta sănătoasă este sub 30% din venitul net.`,
       });
     }
     alerts.push({
       level: debt.monthlyInterestCost > totalIncome * 0.05 ? "warning" : "info",
-      title: `Dobânda te costă ${round2(debt.monthlyInterestCost)} ${snapshot.currency} pe lună`,
-      detail: `Sold total ${round2(debt.totalBalance)} ${snapshot.currency} la o dobândă medie ponderată de ${(debt.weightedAnnualRate * 100).toFixed(1)}% pe an.`,
+      title: `Dobânda te costă ${formatAmount(debt.monthlyInterestCost, snapshot.currency)} pe lună`,
+      detail: `Sold total ${formatAmount(debt.totalBalance, snapshot.currency)} la o dobândă medie ponderată de ${formatPercent(debt.weightedAnnualRate)} pe an.`,
     });
   }
 
@@ -285,36 +286,36 @@ function buildAlerts(snapshot: Omit<Snapshot, "alerts">): Alert[] {
     alerts.push({
       level: "warning",
       title: "Fond de urgență insuficient",
-      detail: `Economiile actuale acoperă ${savings.emergencyFundMonthsCovered.toFixed(1)} luni de cheltuieli esențiale. Prima țintă realistă este o lună, adică ${round2(snapshot.essentialExpenses)} ${snapshot.currency}.`,
+      detail: `Economiile actuale acoperă ${formatDecimal(savings.emergencyFundMonthsCovered)} luni de cheltuieli esențiale. Prima țintă realistă este o lună, adică ${formatAmount(snapshot.essentialExpenses, snapshot.currency)}.`,
     });
   } else if (savings.emergencyFundMonthsCovered >= 3) {
     alerts.push({
       level: "good",
       title: "Fond de urgență solid",
-      detail: `Economiile acoperă ${savings.emergencyFundMonthsCovered.toFixed(1)} luni de cheltuieli esențiale.`,
+      detail: `Economiile acoperă ${formatDecimal(savings.emergencyFundMonthsCovered)} luni de cheltuieli esențiale.`,
     });
   }
 
   for (const category of categories.filter((c) => c.overBenchmark > 0).slice(0, 2)) {
     alerts.push({
       level: "warning",
-      title: `${category.label}: ${(category.shareOfIncome * 100).toFixed(0)}% din venit`,
-      detail: `Sunt ${round2(category.overBenchmark)} ${snapshot.currency} peste reperul uzual de ${(category.benchmarkMaxShare * 100).toFixed(0)}% din venitul net.`,
+      title: `${category.label}: ${formatPercent(category.shareOfIncome, 0)} din venit`,
+      detail: `Sunt ${formatAmount(category.overBenchmark, snapshot.currency)} peste reperul uzual de ${formatPercent(category.benchmarkMaxShare, 0)} din venitul net.`,
     });
   }
 
   if (snapshot.savings.realisticSavingsRate >= 0.1) {
     alerts.push({
       level: "good",
-      title: `Poți economisi realist ${(snapshot.savings.realisticSavingsRate * 100).toFixed(1)}% din venit`,
-      detail: `Adică ${round2(snapshot.savings.monthlyToEmergencyFund + snapshot.savings.monthlyToGoals)} ${snapshot.currency} pe lună, din banii care îți rămân efectiv, nu dintr-o țintă teoretică.`,
+      title: `Poți economisi realist ${formatPercent(snapshot.savings.realisticSavingsRate)} din venit`,
+      detail: `Adică ${formatAmount(snapshot.savings.monthlyToEmergencyFund + snapshot.savings.monthlyToGoals, snapshot.currency)} pe lună, din banii care îți rămân efectiv, nu dintr-o țintă teoretică.`,
     });
   }
 
   if (snapshot.oneOffThisMonth > 0) {
     alerts.push({
       level: snapshot.oneOffThisMonth > freeCashFlow ? "warning" : "info",
-      title: `Cheltuieli excepționale luna aceasta: ${round2(snapshot.oneOffThisMonth)} ${snapshot.currency}`,
+      title: `Cheltuieli excepționale luna aceasta: ${formatAmount(snapshot.oneOffThisMonth, snapshot.currency)}`,
       detail:
         snapshot.oneOffThisMonth > freeCashFlow
           ? "Depășesc surplusul lunar, deci luna aceasta planul de economisire se amână, nu se anulează."
