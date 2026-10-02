@@ -1,17 +1,30 @@
 "use client";
 
-import { useActionState } from "react";
-import { saveHousehold, type ActionState } from "@/app/actions";
+import { useState } from "react";
 import { SubmitButton } from "@/components/ui";
-import type { HouseholdRecord } from "@/lib/repo";
-
-const initial: ActionState = { ok: false, message: "" };
+import { useBudget } from "@/lib/budget-store";
+import type { HouseholdRecord } from "@/lib/local-state";
 
 export function HouseholdForm({ household }: { household: HouseholdRecord }) {
-  const [state, action] = useActionState(saveHousehold, initial);
+  const { saveHousehold } = useBudget();
+  const [message, setMessage] = useState("");
 
   return (
-    <form action={action} className="space-y-4">
+    <form
+      className="space-y-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const data = new FormData(event.currentTarget);
+        saveHousehold({
+          name: String(data.get("name") ?? household.name).trim() || household.name,
+          currency: String(data.get("currency") ?? household.currency),
+          adults: Number(data.get("adults") || household.adults),
+          children: Number(data.get("children") || 0),
+          savingsBalance: Number(data.get("savingsBalance") || 0),
+        });
+        setMessage("Am salvat datele familiei.");
+      }}
+    >
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="household-name">
@@ -34,29 +47,13 @@ export function HouseholdForm({ household }: { household: HouseholdRecord }) {
           <label className="label" htmlFor="household-adults">
             Adulți
           </label>
-          <input
-            id="household-adults"
-            name="adults"
-            type="number"
-            min="1"
-            max="10"
-            className="input"
-            defaultValue={household.adults}
-          />
+          <input id="household-adults" name="adults" type="number" min="1" max="10" className="input" defaultValue={household.adults} />
         </div>
         <div>
           <label className="label" htmlFor="household-children">
             Copii
           </label>
-          <input
-            id="household-children"
-            name="children"
-            type="number"
-            min="0"
-            max="15"
-            className="input"
-            defaultValue={household.children}
-          />
+          <input id="household-children" name="children" type="number" min="0" max="15" className="input" defaultValue={household.children} />
         </div>
         <div className="sm:col-span-2">
           <label className="label" htmlFor="household-savings">
@@ -77,12 +74,9 @@ export function HouseholdForm({ household }: { household: HouseholdRecord }) {
           </p>
         </div>
       </div>
-
       <div className="flex items-center gap-3">
         <SubmitButton>Salvează</SubmitButton>
-        {state.message && (
-          <span className={`text-sm ${state.ok ? "text-brand-700" : "text-red-600"}`}>{state.message}</span>
-        )}
+        {message && <span className="text-sm text-brand-700">{message}</span>}
       </div>
     </form>
   );

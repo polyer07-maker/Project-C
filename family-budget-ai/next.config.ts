@@ -1,14 +1,13 @@
 import type { NextConfig } from "next";
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 const nextConfig: NextConfig = {
-  // better-sqlite3 is a native module and must not be bundled.
-  serverExternalPackages: ["better-sqlite3"],
-  allowedDevOrigins: ["*.trycloudflare.com", "*.loca.lt"],
-  experimental: {
-    serverActions: {
-      allowedOrigins: ["*.trycloudflare.com", "*.loca.lt"],
-    },
-  },
+  output: "export",
+  images: { unoptimized: true },
+  trailingSlash: true,
+  basePath: basePath || undefined,
+  assetPrefix: basePath || undefined,
 };
 
 export default nextConfig;

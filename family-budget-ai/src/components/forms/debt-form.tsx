@@ -1,17 +1,41 @@
 "use client";
 
-import { useActionState } from "react";
-import { createDebt, type ActionState } from "@/app/actions";
+import { useState } from "react";
 import { SubmitButton } from "@/components/ui";
 import { DEBT_KIND_LABEL } from "@/lib/format";
-
-const initial: ActionState = { ok: false, message: "" };
+import { useBudget } from "@/lib/budget-store";
+import type { Debt } from "@/lib/finance/types";
 
 export function DebtForm() {
-  const [state, action] = useActionState(createDebt, initial);
+  const { addDebt } = useBudget();
+  const [message, setMessage] = useState("");
 
   return (
-    <form action={action} className="space-y-4">
+    <form
+      className="space-y-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = new FormData(form);
+        const name = String(data.get("name") ?? "").trim();
+        const balance = Number(data.get("balance"));
+        const annualRatePercent = Number(data.get("annualRatePercent"));
+        const minPayment = Number(data.get("minPayment"));
+        if (name.length < 2 || !Number.isFinite(balance)) {
+          setMessage("Completează numele și soldul.");
+          return;
+        }
+        addDebt({
+          name,
+          kind: (data.get("kind") as Debt["kind"]) || "other",
+          balance,
+          annualRate: annualRatePercent / 100,
+          minPayment,
+        });
+        form.reset();
+        setMessage(`Am adăugat „${name}”.`);
+      }}
+    >
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="debt-name">
@@ -35,31 +59,13 @@ export function DebtForm() {
           <label className="label" htmlFor="debt-balance">
             Sold rămas
           </label>
-          <input
-            id="debt-balance"
-            name="balance"
-            type="number"
-            min="0"
-            step="0.01"
-            className="input"
-            placeholder="9800"
-            required
-          />
+          <input id="debt-balance" name="balance" type="number" min="0" step="0.01" className="input" placeholder="9800" required />
         </div>
         <div>
           <label className="label" htmlFor="debt-rate">
             Dobândă anuală (%)
           </label>
-          <input
-            id="debt-rate"
-            name="annualRatePercent"
-            type="number"
-            min="0"
-            step="0.01"
-            className="input"
-            placeholder="32"
-            required
-          />
+          <input id="debt-rate" name="annualRatePercent" type="number" min="0" step="0.01" className="input" placeholder="32" required />
           <p className="mt-1 text-xs text-slate-500">
             Scrie DAE sau rata de dobândă din contract. Pune 0 dacă este o rată fără dobândă.
           </p>
@@ -68,24 +74,12 @@ export function DebtForm() {
           <label className="label" htmlFor="debt-min">
             Plată minimă lunară
           </label>
-          <input
-            id="debt-min"
-            name="minPayment"
-            type="number"
-            min="0"
-            step="0.01"
-            className="input"
-            placeholder="420"
-            required
-          />
+          <input id="debt-min" name="minPayment" type="number" min="0" step="0.01" className="input" placeholder="420" required />
         </div>
       </div>
-
       <div className="flex items-center gap-3">
         <SubmitButton>Adaugă datoria</SubmitButton>
-        {state.message && (
-          <span className={`text-sm ${state.ok ? "text-brand-700" : "text-red-600"}`}>{state.message}</span>
-        )}
+        {message && <span className="text-sm text-brand-700">{message}</span>}
       </div>
     </form>
   );

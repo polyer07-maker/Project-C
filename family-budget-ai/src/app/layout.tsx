@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Providers } from "@/components/providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,18 +14,31 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Buget Familie AI — analiză financiară realistă",
-  description:
-    "Introduci salariile și cheltuielile familiei, iar aplicația îți calculează cât poți economisi realist și în cât timp scapi de datorii. Toate cifrele sunt calculate, nu estimate de un model de limbaj.",
+  title: "Buget Familie",
+  description: "Bugetul familiei pe telefon: venituri, cheltuieli, datorii și un plan realist de economisire.",
+  applicationName: "Buget Familie",
+  appleWebApp: {
+    capable: true,
+    title: "Buget Familie",
+    statusBarStyle: "default",
+  },
+  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  manifest: "/manifest.webmanifest",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: "#137f57",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="ro"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+    <html lang="ro" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+      <body className="flex min-h-full flex-col font-sans">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

@@ -1,16 +1,39 @@
 "use client";
 
-import { useActionState } from "react";
-import { createIncome, type ActionState } from "@/app/actions";
+import { useState } from "react";
+import { useBudget } from "@/lib/budget-store";
 import { SubmitButton } from "@/components/ui";
-
-const initial: ActionState = { ok: false, message: "" };
+import type { Frequency, IncomeKind, IncomeStability } from "@/lib/finance/types";
 
 export function IncomeForm() {
-  const [state, action] = useActionState(createIncome, initial);
+  const { addIncome } = useBudget();
+  const [message, setMessage] = useState("");
 
   return (
-    <form action={action} className="space-y-4">
+    <form
+      className="space-y-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = new FormData(form);
+        const label = String(data.get("label") ?? "").trim();
+        const amount = Number(data.get("amount"));
+        if (label.length < 2 || !Number.isFinite(amount) || amount < 0) {
+          setMessage("Completează denumirea și suma.");
+          return;
+        }
+        addIncome({
+          label,
+          memberName: String(data.get("memberName") ?? "").trim() || null,
+          amount,
+          frequency: (data.get("frequency") as Frequency) || "monthly",
+          kind: (data.get("kind") as IncomeKind) || "salary",
+          stability: (data.get("stability") as IncomeStability) || "stable",
+        });
+        form.reset();
+        setMessage(`Am adăugat „${label}”.`);
+      }}
+    >
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="income-label">
@@ -28,16 +51,7 @@ export function IncomeForm() {
           <label className="label" htmlFor="income-amount">
             Sumă
           </label>
-          <input
-            id="income-amount"
-            name="amount"
-            type="number"
-            min="0"
-            step="0.01"
-            className="input"
-            placeholder="6200"
-            required
-          />
+          <input id="income-amount" name="amount" type="number" min="0" step="0.01" className="input" placeholder="6200" required />
         </div>
         <div>
           <label className="label" htmlFor="income-frequency">
@@ -72,12 +86,9 @@ export function IncomeForm() {
           </select>
         </div>
       </div>
-
       <div className="flex items-center gap-3">
         <SubmitButton>Adaugă venitul</SubmitButton>
-        {state.message && (
-          <span className={`text-sm ${state.ok ? "text-brand-700" : "text-red-600"}`}>{state.message}</span>
-        )}
+        {message && <span className="text-sm text-brand-700">{message}</span>}
       </div>
     </form>
   );

@@ -1,20 +1,43 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { createExpense, type ActionState } from "@/app/actions";
+import { useState } from "react";
 import { SubmitButton } from "@/components/ui";
 import { CATEGORIES } from "@/lib/finance/categories";
-
-const initial: ActionState = { ok: false, message: "" };
+import { useBudget } from "@/lib/budget-store";
+import type { CategoryKey, Frequency } from "@/lib/finance/types";
 
 export function ExpenseForm() {
-  const [state, action] = useActionState(createExpense, initial);
+  const { addExpense } = useBudget();
   const [category, setCategory] = useState(CATEGORIES[0].key);
   const [frequency, setFrequency] = useState("monthly");
+  const [message, setMessage] = useState("");
   const meta = CATEGORIES.find((c) => c.key === category) ?? CATEGORIES[0];
 
   return (
-    <form action={action} className="space-y-4">
+    <form
+      className="space-y-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const data = new FormData(form);
+        const label = String(data.get("label") ?? "").trim();
+        const amount = Number(data.get("amount"));
+        if (label.length < 2 || !Number.isFinite(amount) || amount < 0) {
+          setMessage("Completează denumirea și suma.");
+          return;
+        }
+        addExpense({
+          label,
+          category: (data.get("category") as CategoryKey) || "altele",
+          amount,
+          frequency: (data.get("frequency") as Frequency) || "monthly",
+          essential: data.get("essential") === "on",
+          date: String(data.get("date") ?? "") || null,
+        });
+        form.reset();
+        setMessage(`Am adăugat „${label}”.`);
+      }}
+    >
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className="label" htmlFor="expense-label">
@@ -45,16 +68,7 @@ export function ExpenseForm() {
           <label className="label" htmlFor="expense-amount">
             Sumă
           </label>
-          <input
-            id="expense-amount"
-            name="amount"
-            type="number"
-            min="0"
-            step="0.01"
-            className="input"
-            placeholder="2450"
-            required
-          />
+          <input id="expense-amount" name="amount" type="number" min="0" step="0.01" className="input" placeholder="2450" required />
         </div>
         <div>
           <label className="label" htmlFor="expense-frequency">
@@ -78,13 +92,7 @@ export function ExpenseForm() {
             <label className="label" htmlFor="expense-date">
               Data cheltuielii
             </label>
-            <input
-              id="expense-date"
-              name="date"
-              type="date"
-              className="input"
-              defaultValue={new Date().toISOString().slice(0, 10)}
-            />
+            <input id="expense-date" name="date" type="date" className="input" defaultValue={new Date().toISOString().slice(0, 10)} />
           </div>
         )}
         <div className="flex items-end">
@@ -100,12 +108,9 @@ export function ExpenseForm() {
           </label>
         </div>
       </div>
-
       <div className="flex items-center gap-3">
         <SubmitButton>Adaugă cheltuiala</SubmitButton>
-        {state.message && (
-          <span className={`text-sm ${state.ok ? "text-brand-700" : "text-red-600"}`}>{state.message}</span>
-        )}
+        {message && <span className="text-sm text-brand-700">{message}</span>}
       </div>
     </form>
   );

@@ -1,13 +1,14 @@
-import { removeGoal } from "@/app/actions";
+"use client";
+
 import { GoalForm } from "@/components/forms/goal-form";
 import { HouseholdForm } from "@/components/forms/household-form";
 import { DeleteButton } from "@/components/ui";
 import { formatMonths, monthsToReach } from "@/lib/finance/debt";
-import { formatDate, formatMoney } from "@/lib/format";
-import { loadCurrentHousehold } from "@/lib/load";
+import { formatMoney } from "@/lib/format";
+import { useBudget } from "@/lib/budget-store";
 
-export default async function GoalsPage() {
-  const { household, data, snapshot } = await loadCurrentHousehold();
+export default function GoalsPage() {
+  const { state, data, snapshot, removeGoal } = useBudget();
   const currency = snapshot.currency;
   const monthlyForGoals = snapshot.savings.monthlyToGoals;
   const remainingTotal = data.goals.reduce((sum, g) => sum + Math.max(0, g.targetAmount - g.savedAmount), 0);
@@ -15,34 +16,20 @@ export default async function GoalsPage() {
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Obiective și date despre familie</h1>
-        <p className="mt-1 text-sm leading-relaxed text-slate-600">
-          Obiectivele sunt finanțate din ce rămâne după fondul de urgență și plățile suplimentare la datorii. Termenele
-          afișate sunt calculate la suma care rămâne efectiv disponibilă, nu la cât ți-ai dori.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Obiective și familie</h1>
       </header>
-
       <section className="card">
         <h2 className="card-title mb-4">Datele gospodăriei</h2>
-        <HouseholdForm household={household} />
+        <HouseholdForm household={state.household} />
       </section>
-
       <section className="card">
         <h2 className="card-title mb-4">Adaugă un obiectiv</h2>
         <GoalForm />
       </section>
-
       <section className="card">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="card-title">Obiective</h2>
-          <p className="text-sm text-slate-600">
-            Disponibil lunar pentru obiective:{" "}
-            <strong className="text-slate-900">{formatMoney(monthlyForGoals, currency)}</strong>
-          </p>
-        </div>
-
+        <h2 className="card-title">Obiective</h2>
         {data.goals.length === 0 ? (
-          <p className="mt-4 text-sm text-slate-500">Niciun obiectiv adăugat.</p>
+          <p className="mt-4 text-sm text-slate-500">Niciun obiectiv.</p>
         ) : (
           <ul className="mt-4 space-y-4">
             {data.goals.map((goal) => {
@@ -51,11 +38,10 @@ export default async function GoalsPage() {
               const share = remainingTotal > 0 ? remaining / remainingTotal : 0;
               const monthlyShare = monthlyForGoals * share;
               const months = monthsToReach(goal.targetAmount, monthlyShare, goal.savedAmount);
-
               return (
                 <li key={goal.id} className="rounded-xl border border-slate-200 p-4">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <h3 className="font-medium text-slate-900">{goal.name}</h3>
+                  <div className="flex justify-between gap-2">
+                    <h3 className="font-medium">{goal.name}</h3>
                     <span className="text-sm text-slate-600">
                       {formatMoney(goal.savedAmount, currency)} / {formatMoney(goal.targetAmount, currency)}
                     </span>
@@ -63,21 +49,9 @@ export default async function GoalsPage() {
                   <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-slate-100">
                     <div className="h-full rounded-full bg-brand-500" style={{ width: `${progress * 100}%` }} />
                   </div>
-                  <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
-                    <span>
-                      {remaining === 0
-                        ? "Obiectiv atins."
-                        : monthlyShare > 0
-                          ? `La ${formatMoney(monthlyShare, currency)} pe lună (partea proporțională din suma disponibilă): ${formatMonths(months)}.`
-                          : "Bugetul actual nu permite nicio alocare pentru acest obiectiv. Apare imediat ce se eliberează bani."}
-                    </span>
-                    <span className="flex items-center gap-3">
-                      {goal.deadline && <span>termen {formatDate(goal.deadline)}</span>}
-                      <form action={removeGoal}>
-                        <input type="hidden" name="id" value={goal.id} />
-                        <DeleteButton />
-                      </form>
-                    </span>
+                  <div className="mt-2 flex justify-between text-xs text-slate-600">
+                    <span>{remaining === 0 ? "Atins." : monthlyShare > 0 ? formatMonths(months) : "Fără alocare acum."}</span>
+                    <DeleteButton onClick={() => removeGoal(goal.id)} />
                   </div>
                 </li>
               );
