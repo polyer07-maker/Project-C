@@ -1,0 +1,18 @@
+{
+  "name": "Buget Familie",
+  "short_name": "Buget",
+  "description": "Bugetul familiei pe telefon",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f6f7f9",
+  "theme_color": "#137f57",
+  "lang": "ro",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
